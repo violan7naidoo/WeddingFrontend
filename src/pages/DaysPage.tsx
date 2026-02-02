@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getApiBaseUrl } from '../api/client'
+import { APP_TITLE } from '../config/branding'
 
 export interface WeddingDay {
   id: number
@@ -43,7 +44,7 @@ export default function DaysPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="mb-8 text-2xl font-semibold text-slate-800">
-        Our Big Day – Wedding Days
+        {APP_TITLE} – Wedding Days
       </h1>
       <ul className="space-y-4">
         {days.map((day) => (
