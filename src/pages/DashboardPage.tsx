@@ -26,6 +26,19 @@ export default function DashboardPage() {
   const canEdit = user?.role === 'Admin' || user?.role === 'Family'
   const deferredSearch = useDeferredValue(search)
 
+  // IMPORTANT: Keep hooks above any conditional returns.
+  const selectedDay = useMemo(
+    () => days.find((d) => d.id === selectedDayId),
+    [days, selectedDayId]
+  )
+  const heroImage = useMemo(() => {
+    const theme = (selectedDay?.themeName ?? '').toLowerCase()
+    if (theme.includes('sangeet')) return HERO_IMAGES.flowers
+    if (theme.includes('night')) return HERO_IMAGES.venue
+    if (theme.includes('christian')) return HERO_IMAGES.rings
+    return HERO_IMAGES.flowers
+  }, [selectedDay?.themeName])
+
   const loadDays = useCallback(async () => {
     if (!token) return
     setLoading(true)
@@ -120,15 +133,6 @@ export default function DashboardPage() {
       </div>
     )
   }
-
-  const selectedDay = days.find((d) => d.id === selectedDayId)
-  const heroImage = useMemo(() => {
-    const theme = (selectedDay?.themeName ?? '').toLowerCase()
-    if (theme.includes('sangeet')) return HERO_IMAGES.flowers
-    if (theme.includes('night')) return HERO_IMAGES.venue
-    if (theme.includes('christian')) return HERO_IMAGES.rings
-    return HERO_IMAGES.flowers
-  }, [selectedDay?.themeName])
 
   return (
     <div className="min-h-screen bg-slate-50">
