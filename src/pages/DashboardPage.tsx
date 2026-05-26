@@ -22,6 +22,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [loadingDay, setLoadingDay] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [savingCategory, setSavingCategory] = useState(false)
 
   const canEdit = user?.role === 'Admin' || user?.role === 'Family'
   const deferredSearch = useDeferredValue(search)
@@ -110,6 +113,35 @@ export default function DashboardPage() {
   const handleItemUpdatedOrDeleted = useCallback(() => {
     refreshItems()
   }, [refreshItems])
+
+  const refreshCategories = useCallback(async () => {
+    if (!token || !selectedDayId) return
+    const res = await fetchWithAuth(`/api/wedding/days/${selectedDayId}/categories`, { token })
+    if (res.ok) setDayCategories(await res.json())
+  }, [token, selectedDayId])
+
+  const handleAddCategory = useCallback(async () => {
+    if (!newCategoryName.trim() || !selectedDayId || !token) return
+    setSavingCategory(true)
+    try {
+      const res = await fetchWithAuth(`/api/wedding/days/${selectedDayId}/categories`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || 'Failed to create table')
+      }
+      setNewCategoryName('')
+      setAddingCategory(false)
+      await refreshCategories()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error creating table')
+    } finally {
+      setSavingCategory(false)
+    }
+  }, [newCategoryName, selectedDayId, token, refreshCategories])
 
   if (loading) {
     return (
@@ -227,7 +259,7 @@ export default function DashboardPage() {
                 <button
                   key={day.id}
                   type="button"
-                  onClick={() => setSelectedDayId(day.id)}
+                  onClick={() => { setSelectedDayId(day.id); setAddingCategory(false); setNewCategoryName('') }}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                     selectedDayId === day.id
                       ? 'bg-slate-900 text-white'
@@ -238,6 +270,49 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
+
+            {canEdit && (
+              <div className="mb-5 flex items-center gap-2">
+                {addingCategory ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddCategory()
+                        if (e.key === 'Escape') { setAddingCategory(false); setNewCategoryName('') }
+                      }}
+                      placeholder="Table name…"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCategory}
+                      disabled={savingCategory || !newCategoryName.trim()}
+                      className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      {savingCategory ? '…' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddingCategory(false); setNewCategoryName('') }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingCategory(true)}
+                    className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-rose-300 hover:text-rose-700"
+                  >
+                    + New table
+                  </button>
+                )}
+              </div>
+            )}
 
             {loadingDay ? (
               <p className="text-slate-600">Loading day…</p>
