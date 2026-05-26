@@ -1,35 +1,34 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { fetchWithAuth } from '../api/client'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import type {
-  CategoryDto,
-  DayCategoriesResponse,
-  WeddingDay,
-  WeddingItemDto,
-} from '../types/api'
+import type { CategoryDto } from '../types/api'
 import AddItemForm from '../components/AddItemForm'
 import ItemsSheet from '../components/ItemsSheet'
+import DayTabs from '../components/DayTabs'
+import NewTableBar from '../components/NewTableBar'
+import { useWeddingData } from '../hooks/useWeddingData'
 import { APP_TITLE, COUPLE_DISPLAY, HERO_IMAGES } from '../config/branding'
 
 export default function DashboardPage() {
   const { token, user, logout } = useAuth()
-  const [days, setDays] = useState<WeddingDay[]>([])
-  const [selectedDayId, setSelectedDayId] = useState<number | null>(null)
-  const [dayCategories, setDayCategories] = useState<DayCategoriesResponse | null>(null)
-  const [items, setItems] = useState<WeddingItemDto[]>([])
+  const {
+    days,
+    selectedDayId,
+    setSelectedDayId,
+    dayCategories,
+    items,
+    loading,
+    loadingDay,
+    error,
+    refreshItems,
+    refreshCategories,
+  } = useWeddingData(token, logout)
+
   const [addItemCategory, setAddItemCategory] = useState<CategoryDto | null>(null)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [loadingDay, setLoadingDay] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [addingCategory, setAddingCategory] = useState(false)
-  const [newCategoryName, setNewCategoryName] = useState('')
-  const [savingCategory, setSavingCategory] = useState(false)
-
-  const canEdit = user?.role === 'Admin' || user?.role === 'Family'
   const deferredSearch = useDeferredValue(search)
 
-  // IMPORTANT: Keep hooks above any conditional returns.
+  const canEdit = user?.role === 'Admin' || user?.role === 'Family'
+
   const selectedDay = useMemo(
     () => days.find((d) => d.id === selectedDayId),
     [days, selectedDayId]
@@ -41,107 +40,6 @@ export default function DashboardPage() {
     if (theme.includes('christian')) return HERO_IMAGES.rings
     return HERO_IMAGES.flowers
   }, [selectedDay?.themeName])
-
-  const loadDays = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetchWithAuth('/api/wedding/days', { token })
-      if (res.status === 401) {
-        logout()
-        return
-      }
-      if (!res.ok) throw new Error('Failed to load days')
-      const data: WeddingDay[] = await res.json()
-      setDays(data)
-      if (data.length > 0 && !selectedDayId) setSelectedDayId(data[0].id)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error loading days')
-    } finally {
-      setLoading(false)
-    }
-  }, [token, selectedDayId, logout])
-
-  useEffect(() => {
-    loadDays()
-  }, [loadDays])
-
-  useEffect(() => {
-    if (!token || !selectedDayId) {
-      setDayCategories(null)
-      setItems([])
-      return
-    }
-    setLoadingDay(true)
-    setError(null)
-    Promise.all([
-      fetchWithAuth(`/api/wedding/days/${selectedDayId}/categories`, { token }).then((r) => {
-        if (r.status === 401) {
-          logout()
-          return Promise.reject(new Error('Session expired'))
-        }
-        return r.ok ? r.json() : Promise.reject(new Error('Failed to load categories'))
-      }),
-      fetchWithAuth(`/api/wedding/days/${selectedDayId}/items`, { token }).then((r) => {
-        if (r.status === 401) {
-          logout()
-          return Promise.reject(new Error('Session expired'))
-        }
-        return r.ok ? r.json() : Promise.reject(new Error('Failed to load items'))
-      }),
-    ])
-      .then(([cats, itemsList]: [DayCategoriesResponse, WeddingItemDto[]]) => {
-        setDayCategories(cats)
-        setItems(itemsList)
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Error'))
-      .finally(() => setLoadingDay(false))
-  }, [token, selectedDayId, logout])
-
-  const refreshItems = useCallback(async () => {
-    if (!token || !selectedDayId) return
-    const res = await fetchWithAuth(`/api/wedding/days/${selectedDayId}/items`, { token })
-    if (res.ok) setItems(await res.json())
-  }, [token, selectedDayId])
-
-  const handleItemCreated = useCallback(() => {
-    setAddItemCategory(null)
-    refreshItems()
-  }, [refreshItems])
-
-  const handleItemUpdatedOrDeleted = useCallback(() => {
-    refreshItems()
-  }, [refreshItems])
-
-  const refreshCategories = useCallback(async () => {
-    if (!token || !selectedDayId) return
-    const res = await fetchWithAuth(`/api/wedding/days/${selectedDayId}/categories`, { token })
-    if (res.ok) setDayCategories(await res.json())
-  }, [token, selectedDayId])
-
-  const handleAddCategory = useCallback(async () => {
-    if (!newCategoryName.trim() || !selectedDayId || !token) return
-    setSavingCategory(true)
-    try {
-      const res = await fetchWithAuth(`/api/wedding/days/${selectedDayId}/categories`, {
-        method: 'POST',
-        token,
-        body: JSON.stringify({ name: newCategoryName.trim() }),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || 'Failed to create table')
-      }
-      setNewCategoryName('')
-      setAddingCategory(false)
-      await refreshCategories()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error creating table')
-    } finally {
-      setSavingCategory(false)
-    }
-  }, [newCategoryName, selectedDayId, token, refreshCategories])
 
   if (loading) {
     return (
@@ -155,13 +53,6 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
         <p className="text-red-600">{error}</p>
-        <button
-          type="button"
-          onClick={() => loadDays()}
-          className="rounded-lg bg-slate-700 px-4 py-2 text-white hover:bg-slate-600"
-        >
-          Retry
-        </button>
       </div>
     )
   }
@@ -172,9 +63,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-7xl px-6 py-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-semibold text-slate-900">
-                {APP_TITLE}
-              </h1>
+              <h1 className="truncate text-xl font-semibold text-slate-900">{APP_TITLE}</h1>
               <p className="mt-0.5 text-sm text-slate-600">{COUPLE_DISPLAY}</p>
             </div>
             <div className="flex items-center justify-between gap-4 md:justify-end">
@@ -217,7 +106,6 @@ export default function DashboardPage() {
                 Spreadsheet-style rows for vendors, costs, deposits, and completion.
               </p>
             </div>
-
             <div className="flex w-full flex-col gap-2 md:w-auto md:min-w-[360px]">
               <label className="text-xs font-medium text-slate-600">Search</label>
               <input
@@ -226,9 +114,6 @@ export default function DashboardPage() {
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
                 placeholder="Search items, vendors, notes…"
               />
-              {deferredSearch.trim() !== search.trim() && (
-                <p className="text-xs text-slate-500">Filtering…</p>
-              )}
             </div>
           </div>
         </section>
@@ -254,84 +139,28 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
-            <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
-              {days.map((day) => (
-                <button
-                  key={day.id}
-                  type="button"
-                  onClick={() => { setSelectedDayId(day.id); setAddingCategory(false); setNewCategoryName('') }}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    selectedDayId === day.id
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {day.themeName}
-                </button>
-              ))}
-            </div>
+            <DayTabs days={days} selectedDayId={selectedDayId} onSelect={setSelectedDayId} />
 
-            {canEdit && (
-              <div className="mb-5 flex items-center gap-2">
-                {addingCategory ? (
-                  <>
-                    <input
-                      autoFocus
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddCategory()
-                        if (e.key === 'Escape') { setAddingCategory(false); setNewCategoryName('') }
-                      }}
-                      placeholder="Table name…"
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCategory}
-                      disabled={savingCategory || !newCategoryName.trim()}
-                      className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                    >
-                      {savingCategory ? '…' : 'Add'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAddingCategory(false); setNewCategoryName('') }}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setAddingCategory(true)}
-                    className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-rose-300 hover:text-rose-700"
-                  >
-                    + New table
-                  </button>
-                )}
-              </div>
+            {canEdit && selectedDayId && token && (
+              <NewTableBar dayId={selectedDayId} token={token} onCreated={refreshCategories} />
             )}
 
             {loadingDay ? (
               <p className="text-slate-600">Loading day…</p>
-            ) : selectedDay && dayCategories ? (
+            ) : selectedDay && dayCategories && token ? (
               <div>
-                {error && (
-                  <p className="mb-4 text-sm text-red-600">{error}</p>
-                )}
-                {token && (
-                  <ItemsSheet
-                    categories={dayCategories.categories}
-                    items={items}
-                    canEdit={canEdit}
-                    token={token}
-                    onAddItem={(cat) => setAddItemCategory(cat)}
-                    onUpdatedOrDeleted={handleItemUpdatedOrDeleted}
-                    searchQuery={deferredSearch}
-                  />
-                )}
+                {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+                <ItemsSheet
+                  dayId={selectedDayId!}
+                  categories={dayCategories.categories}
+                  items={items}
+                  canEdit={canEdit}
+                  token={token}
+                  onAddItem={(cat) => setAddItemCategory(cat)}
+                  onUpdatedOrDeleted={refreshItems}
+                  onCategoryDeleted={refreshCategories}
+                  searchQuery={deferredSearch}
+                />
               </div>
             ) : null}
           </>
@@ -344,7 +173,7 @@ export default function DashboardPage() {
           category={addItemCategory}
           token={token}
           onClose={() => setAddItemCategory(null)}
-          onCreated={handleItemCreated}
+          onCreated={() => { setAddItemCategory(null); refreshItems() }}
         />
       )}
     </div>

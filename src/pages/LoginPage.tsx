@@ -3,11 +3,9 @@ import { useAuth } from '../context/AuthContext'
 import { APP_TITLE, COUPLE_DISPLAY, HERO_IMAGES } from '../config/branding'
 
 export default function LoginPage() {
-  const { login, register } = useAuth()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [isRegister, setIsRegister] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -16,11 +14,7 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      if (isRegister) {
-        await register(email, password, displayName)
-      } else {
-        await login(email, password)
-      }
+      await login(email, password)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -49,9 +43,7 @@ export default function LoginPage() {
               <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">
                 {APP_TITLE}
               </h1>
-              <p className="mt-2 text-sm text-slate-600 md:text-base">
-                {COUPLE_DISPLAY}
-              </p>
+              <p className="mt-2 text-sm text-slate-600 md:text-base">{COUPLE_DISPLAY}</p>
               <p className="mt-6 max-w-md text-sm text-slate-600">
                 Log in to manage items, vendors and costs across your wedding days — in a clean,
                 spreadsheet-style dashboard.
@@ -80,37 +72,15 @@ export default function LoginPage() {
         <section className="flex items-center">
           <div className="w-full rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">
-                {isRegister ? 'Create an account' : 'Sign in'}
-              </h2>
+              <h2 className="text-xl font-semibold text-slate-900">Sign in</h2>
               <p className="mt-1 text-sm text-slate-500">
-                {isRegister
-                  ? 'Family members can register and start editing immediately.'
-                  : 'Sign in to access the planner dashboard.'}
+                Sign in to access the planner dashboard.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {isRegister && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Display name
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                    placeholder="Your name"
-                    required={isRegister}
-                    autoComplete="name"
-                  />
-                </div>
-              )}
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Email
-                </label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -122,9 +92,7 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Password
-                </label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
                 <input
                   type="password"
                   value={password}
@@ -133,7 +101,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  autoComplete="current-password"
                 />
               </div>
 
@@ -148,24 +116,9 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full rounded-lg bg-gradient-to-r from-rose-600 to-amber-500 py-2.5 font-medium text-white shadow-sm hover:from-rose-500 hover:to-amber-400 disabled:opacity-50"
               >
-                {loading ? 'Please wait…' : isRegister ? 'Register' : 'Sign in'}
+                {loading ? 'Please wait…' : 'Sign in'}
               </button>
             </form>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsRegister(!isRegister)
-                setError(null)
-              }}
-              className="mt-4 w-full text-sm text-slate-600 hover:text-slate-800"
-            >
-              {isRegister ? 'Already have an account? Sign in' : 'Need an account? Register'}
-            </button>
-
-            <p className="mt-6 text-xs text-slate-400">
-              Demo: admin@ourbigday.com / Admin123!
-            </p>
           </div>
         </section>
       </div>

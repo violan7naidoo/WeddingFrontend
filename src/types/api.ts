@@ -29,7 +29,6 @@ export interface WeddingItemDto {
   depositPaid: number | null
   outstandingFees: number | null
   percentageComplete: number | null
-  attributesJson: string | null
 }
 
 export interface CreateWeddingItemRequest {
@@ -40,7 +39,14 @@ export interface CreateWeddingItemRequest {
   notes?: string | null
   estimatedCost?: number | null
   depositPaid?: number | null
-  outstandingFees?: number | null
   percentageComplete?: number | null
-  attributesJson?: string | null
+}
+
+export interface UpdateWeddingItemRequest {
+  name: string
+  vendorName?: string | null
+  notes?: string | null
+  estimatedCost?: number | null
+  depositPaid?: number | null
+  percentageComplete?: number | null
 }

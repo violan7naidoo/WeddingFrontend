@@ -1,15 +1,17 @@
 import { memo, useMemo, useState } from 'react'
 import type { CategoryDto, WeddingItemDto } from '../types/api'
-import { fetchWithAuth } from '../api/client'
+import { weddingApi } from '../api/weddingApi'
 import AddItemForm from './AddItemForm'
 
 type Props = {
+  dayId: number
   categories: CategoryDto[]
   items: WeddingItemDto[]
   canEdit: boolean
   token: string
   onAddItem: (category: CategoryDto) => void
   onUpdatedOrDeleted: () => void
+  onCategoryDeleted: () => void
   searchQuery: string
 }
 
@@ -28,25 +30,24 @@ function formatPercent(value: number | null | undefined) {
 }
 
 const ItemsSheet = memo(function ItemsSheet({
+  dayId,
   categories,
   items,
   canEdit,
   token,
   onAddItem,
   onUpdatedOrDeleted,
+  onCategoryDeleted,
   searchQuery,
 }: Props) {
+  const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
+
   const normalizedQuery = searchQuery.trim().toLowerCase()
 
   const filteredItems = useMemo(() => {
     if (!normalizedQuery) return items
     return items.filter((i) => {
-      const haystack = [
-        i.name,
-        i.vendorName ?? '',
-        i.notes ?? '',
-        i.categoryName ?? '',
-      ]
+      const haystack = [i.name, i.vendorName ?? '', i.notes ?? '', i.categoryName ?? '']
         .join(' ')
         .toLowerCase()
       return haystack.includes(normalizedQuery)
@@ -60,10 +61,22 @@ const ItemsSheet = memo(function ItemsSheet({
       list.push(item)
       map.set(item.categoryId, list)
     }
-    // stable-ish ordering
     for (const [, list] of map) list.sort((a, b) => a.name.localeCompare(b.name))
     return map
   }, [filteredItems])
+
+  async function handleDeleteCategory(cat: CategoryDto) {
+    if (!confirm(`Delete table "${cat.name}" and all its rows? This cannot be undone.`)) return
+    setDeletingCategoryId(cat.id)
+    try {
+      await weddingApi.categories.delete(dayId, cat.id, token)
+      onCategoryDeleted()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to delete table')
+    } finally {
+      setDeletingCategoryId(null)
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -93,13 +106,23 @@ const ItemsSheet = memo(function ItemsSheet({
                 </p>
               </div>
               {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => onAddItem(cat)}
-                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-                >
-                  Add row
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onAddItem(cat)}
+                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                  >
+                    Add row
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategory(cat)}
+                    disabled={deletingCategoryId === cat.id}
+                    className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {deletingCategoryId === cat.id ? '…' : 'Delete table'}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -129,10 +152,7 @@ const ItemsSheet = memo(function ItemsSheet({
                 <tbody>
                   {categoryItems.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={8}
-                        className="px-3 py-6 text-sm text-slate-500"
-                      >
+                      <td colSpan={8} className="px-3 py-6 text-sm text-slate-500">
                         No rows yet.
                       </td>
                     </tr>
@@ -175,12 +195,10 @@ function ItemRow({
     if (!confirm('Delete this row?')) return
     setDeleting(true)
     try {
-      const res = await fetchWithAuth(`/api/wedding/items/${item.id}`, {
-        method: 'DELETE',
-        token,
-      })
-      if (res.ok) onUpdatedOrDeleted()
-      else throw new Error(await res.text())
+      await weddingApi.items.delete(item.id, token)
+      onUpdatedOrDeleted()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to delete item')
     } finally {
       setDeleting(false)
     }
@@ -250,4 +268,3 @@ function ItemRow({
 }
 
 export default ItemsSheet
-

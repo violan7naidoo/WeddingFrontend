@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fetchWithAuth } from '../api/client'
+import { weddingApi } from '../api/weddingApi'
 import type { CategoryDto, WeddingItemDto } from '../types/api'
 
 interface AddItemFormProps {
@@ -28,9 +28,6 @@ export default function AddItemForm({
   const [depositPaid, setDepositPaid] = useState(
     existingItem?.depositPaid?.toString() ?? ''
   )
-  const [outstandingFees, setOutstandingFees] = useState(
-    existingItem?.outstandingFees?.toString() ?? ''
-  )
   const [percentageComplete, setPercentageComplete] = useState(
     existingItem?.percentageComplete?.toString() ?? ''
   )
@@ -42,46 +39,21 @@ export default function AddItemForm({
     setError(null)
     setSaving(true)
     try {
-      const body = {
-        dayId,
-        categoryId: category.id,
+      const common = {
         name: name.trim(),
         vendorName: vendorName.trim() || null,
         notes: notes.trim() || null,
         estimatedCost: parseNum(estimatedCost),
         depositPaid: parseNum(depositPaid),
-        outstandingFees: parseNum(outstandingFees),
         percentageComplete: parseNum(percentageComplete),
-        attributesJson: null as string | null,
       }
       if (existingItem) {
-        const res = await fetchWithAuth(`/api/wedding/items/${existingItem.id}`, {
-          method: 'PUT',
-          token,
-          body: JSON.stringify({
-            name: body.name,
-            vendorName: body.vendorName,
-            notes: body.notes,
-            estimatedCost: body.estimatedCost,
-            depositPaid: body.depositPaid,
-            outstandingFees: body.outstandingFees,
-            percentageComplete: body.percentageComplete,
-            attributesJson: body.attributesJson,
-          }),
-        })
-        if (!res.ok) throw new Error(await res.text())
-        onCreated()
-        onClose()
+        await weddingApi.items.update(existingItem.id, common, token)
       } else {
-        const res = await fetchWithAuth('/api/wedding/items', {
-          method: 'POST',
-          token,
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error(await res.text())
-        onCreated()
-        onClose()
+        await weddingApi.items.create({ dayId, categoryId: category.id, ...common }, token)
       }
+      onCreated()
+      onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -156,7 +128,7 @@ export default function AddItemForm({
               </label>
               <input
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
                 max="100"
                 value={percentageComplete}
@@ -165,20 +137,6 @@ export default function AddItemForm({
                 placeholder="0"
               />
             </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Outstanding fees
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={outstandingFees}
-              onChange={(e) => setOutstandingFees(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800"
-              placeholder="Optional"
-            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
