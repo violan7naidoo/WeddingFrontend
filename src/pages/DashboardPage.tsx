@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import type { CategoryDto } from '../types/api'
 import AddItemForm from '../components/AddItemForm'
@@ -6,7 +6,7 @@ import ItemsSheet from '../components/ItemsSheet'
 import DayTabs from '../components/DayTabs'
 import NewTableBar from '../components/NewTableBar'
 import { useWeddingData } from '../hooks/useWeddingData'
-import { APP_TITLE, COUPLE_DISPLAY, HERO_IMAGES } from '../config/branding'
+import { APP_TITLE, COUPLE_DISPLAY, SLIDER_IMAGES } from '../config/branding'
 
 export default function DashboardPage() {
   const { token, user, logout } = useAuth()
@@ -33,13 +33,19 @@ export default function DashboardPage() {
     () => days.find((d) => d.id === selectedDayId),
     [days, selectedDayId]
   )
-  const heroImage = useMemo(() => {
-    const theme = (selectedDay?.themeName ?? '').toLowerCase()
-    if (theme.includes('sangeet')) return HERO_IMAGES.flowers
-    if (theme.includes('night')) return HERO_IMAGES.venue
-    if (theme.includes('christian')) return HERO_IMAGES.rings
-    return HERO_IMAGES.flowers
-  }, [selectedDay?.themeName])
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setVisible(false)
+      setTimeout(() => {
+        setCurrentSlide(i => (i + 1) % SLIDER_IMAGES.length)
+        setVisible(true)
+      }, 600)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [])
 
   if (loading) {
     return (
@@ -87,11 +93,9 @@ export default function DashboardPage() {
         <section className="relative mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="absolute inset-0">
             <img
-              src={heroImage}
+              src={SLIDER_IMAGES[currentSlide]}
               alt=""
-              className="h-full w-full object-cover opacity-20"
-              loading="lazy"
-              referrerPolicy="no-referrer"
+              className={`h-full w-full object-cover transition-opacity duration-700 ${visible ? 'opacity-30' : 'opacity-0'}`}
             />
           </div>
           <div className="relative flex flex-col gap-4 p-6 md:flex-row md:items-end md:justify-between">

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { APP_TITLE, COUPLE_DISPLAY, HERO_IMAGES } from '../config/branding'
+import { APP_TITLE, COUPLE_DISPLAY, SLIDER_IMAGES } from '../config/branding'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -8,6 +8,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setVisible(false)
+      setTimeout(() => {
+        setCurrentSlide(i => (i + 1) % SLIDER_IMAGES.length)
+        setVisible(true)
+      }, 600)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -26,13 +39,11 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-stretch gap-0 px-4 py-6 md:grid-cols-2 md:gap-6 md:px-6">
         <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-rose-50 via-white to-amber-50 shadow-sm">
-          <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0">
             <img
-              src={HERO_IMAGES.flowers}
+              src={SLIDER_IMAGES[currentSlide]}
               alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-              referrerPolicy="no-referrer"
+              className={`h-full w-full object-cover transition-opacity duration-700 ${visible ? 'opacity-30' : 'opacity-0'}`}
             />
           </div>
           <div className="relative flex h-full flex-col justify-between p-8">
@@ -51,20 +62,21 @@ export default function LoginPage() {
             </div>
 
             <div className="mt-10 grid grid-cols-3 gap-3">
-              {[HERO_IMAGES.rings, HERO_IMAGES.venue, HERO_IMAGES.flowers].map((src) => (
-                <div
-                  key={src}
-                  className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                >
-                  <img
-                    src={src}
-                    alt=""
-                    className="h-24 w-full object-cover md:h-28"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              ))}
+              {[0, 1, 2].map((offset) => {
+                const idx = (currentSlide + offset) % SLIDER_IMAGES.length
+                return (
+                  <div
+                    key={offset}
+                    className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                  >
+                    <img
+                      src={SLIDER_IMAGES[idx]}
+                      alt=""
+                      className={`h-24 w-full object-cover transition-opacity duration-700 md:h-28 ${visible ? 'opacity-100' : 'opacity-0'}`}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </div>
         </section>
