@@ -1,5 +1,6 @@
 import { fetchWithAuth } from './client'
 import type {
+  AddPaymentRequest,
   CategoryDto,
   CreateWeddingItemRequest,
   DayCategoriesResponse,
@@ -79,5 +80,35 @@ export const weddingApi = {
         method: 'DELETE',
         token,
       }).then(handleDelete),
+  },
+
+  payments: {
+    add: (itemId: number, request: AddPaymentRequest, token: string): Promise<WeddingItemDto> =>
+      fetchWithAuth(`/api/wedding/items/${itemId}/payments`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify(request),
+      }).then(handleResponse),
+
+    delete: (itemId: number, paymentId: number, token: string): Promise<WeddingItemDto> =>
+      fetchWithAuth(`/api/wedding/items/${itemId}/payments/${paymentId}`, {
+        method: 'DELETE',
+        token,
+      }).then(handleResponse),
+  },
+
+  images: {
+    add: (itemId: number, imageBase64: string, token: string): Promise<WeddingItemDto> =>
+      fetchWithAuth(`/api/wedding/items/${itemId}/images`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ imageBase64 }),
+      }).then(handleResponse),
+
+    delete: (itemId: number, imageIndex: number, token: string): Promise<WeddingItemDto> =>
+      fetchWithAuth(`/api/wedding/items/${itemId}/images/${imageIndex}`, {
+        method: 'DELETE',
+        token,
+      }).then(handleResponse),
   },
 }

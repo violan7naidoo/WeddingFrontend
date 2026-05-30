@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from 'react'
 import type { CategoryDto, WeddingItemDto } from '../types/api'
 import { weddingApi } from '../api/weddingApi'
 import AddItemForm from './AddItemForm'
+import ItemDetailModal from './ItemDetailModal'
 
 type Props = {
   dayId: number
@@ -178,7 +179,7 @@ const ItemsSheet = memo(function ItemsSheet({
 })
 
 function ItemRow({
-  item,
+  item: initialItem,
   canEdit,
   token,
   onUpdatedOrDeleted,
@@ -188,7 +189,9 @@ function ItemRow({
   token: string
   onUpdatedOrDeleted: () => void
 }) {
+  const [item, setItem] = useState(initialItem)
   const [editing, setEditing] = useState(false)
+  const [viewing, setViewing] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete() {
@@ -204,6 +207,11 @@ function ItemRow({
     }
   }
 
+  function handleUpdated(updated: WeddingItemDto) {
+    setItem(updated)
+    onUpdatedOrDeleted()
+  }
+
   if (editing) {
     return (
       <AddItemForm
@@ -212,58 +220,77 @@ function ItemRow({
         token={token}
         existingItem={item}
         onClose={() => setEditing(false)}
-        onCreated={onUpdatedOrDeleted}
+        onCreated={() => { setEditing(false); onUpdatedOrDeleted() }}
       />
     )
   }
 
   return (
-    <tr className="group hover:bg-rose-50/40">
-      <td className="border-b border-slate-200 px-3 py-2 align-top font-medium text-slate-900">
-        {item.name}
-      </td>
-      <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
-        {item.vendorName ?? '–'}
-      </td>
-      <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
-        {formatZar(item.estimatedCost)}
-      </td>
-      <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
-        {formatZar(item.depositPaid)}
-      </td>
-      <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
-        {formatZar(item.outstandingFees)}
-      </td>
-      <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
-        {formatPercent(item.percentageComplete)}
-      </td>
-      <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-600">
-        <span className="block max-w-[360px] truncate">{item.notes ?? '–'}</span>
-      </td>
-      <td className="border-b border-slate-200 px-3 py-2 align-top">
-        {canEdit ? (
+    <>
+      <tr className="group hover:bg-rose-50/40">
+        <td className="border-b border-slate-200 px-3 py-2 align-top font-medium text-slate-900">
+          {item.name}
+        </td>
+        <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
+          {item.vendorName ?? '–'}
+        </td>
+        <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
+          {formatZar(item.estimatedCost)}
+        </td>
+        <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
+          {formatZar(item.depositPaid)}
+        </td>
+        <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
+          {formatZar(item.outstandingFees)}
+        </td>
+        <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-700">
+          {formatPercent(item.percentageComplete)}
+        </td>
+        <td className="border-b border-slate-200 px-3 py-2 align-top text-slate-600">
+          <span className="block max-w-[360px] truncate">{item.notes ?? '–'}</span>
+        </td>
+        <td className="border-b border-slate-200 px-3 py-2 align-top">
           <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
             <button
               type="button"
-              onClick={() => setEditing(true)}
+              onClick={() => setViewing(true)}
               className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Edit
+              View
             </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-            >
-              {deleting ? '…' : 'Delete'}
-            </button>
+            {canEdit && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deleting ? '…' : 'Del'}
+                </button>
+              </>
+            )}
           </div>
-        ) : (
-          <span className="text-xs text-slate-400">—</span>
-        )}
-      </td>
-    </tr>
+        </td>
+      </tr>
+
+      {viewing && (
+        <ItemDetailModal
+          item={item}
+          canEdit={canEdit}
+          token={token}
+          onClose={() => setViewing(false)}
+          onUpdated={handleUpdated}
+        />
+      )}
+    </>
   )
 }
 

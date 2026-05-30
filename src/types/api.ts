@@ -17,6 +17,13 @@ export interface DayCategoriesResponse {
   categories: CategoryDto[]
 }
 
+export interface PaymentDto {
+  id: number
+  amount: number
+  paidDate: string
+  note: string | null
+}
+
 export interface WeddingItemDto {
   id: number
   dayId: number
@@ -29,6 +36,8 @@ export interface WeddingItemDto {
   depositPaid: number | null
   outstandingFees: number | null
   percentageComplete: number | null
+  images: string[]
+  payments: PaymentDto[]
 }
 
 export interface CreateWeddingItemRequest {
@@ -49,4 +58,10 @@ export interface UpdateWeddingItemRequest {
   estimatedCost?: number | null
   depositPaid?: number | null
   percentageComplete?: number | null
+}
+
+export interface AddPaymentRequest {
+  amount: number
+  paidDate: string
+  note?: string | null
 }
