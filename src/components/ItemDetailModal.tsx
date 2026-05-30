@@ -141,9 +141,9 @@ export default function ItemDetailModal({ item: initialItem, canEdit, token, onC
         token={token}
         existingItem={item}
         onClose={() => setEditing(false)}
-        onCreated={(updated) => {
-          if (updated) syncItem(updated as WeddingItemDto)
+        onCreated={() => {
           setEditing(false)
+          onClose()
         }}
       />
     )
